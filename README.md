@@ -1,0 +1,1 @@
+# magnetsbg-store
