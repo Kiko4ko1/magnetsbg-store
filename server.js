@@ -95,3 +95,63 @@ app.post('/admin/login',(req,res)=>{const{email,password}=req.body;if(email===AD
 app.get('/admin',requireAdmin,(req,res)=>{const list=orders.map(o=>`<li>${o.number} — ${o.method} — ${o.status} — ${formatBGN(o.total)} ${formatEUR(o.total)} ${o.method==='cod'?`<a href='/waybill/${o.id}'>Товарителница</a>`:''}</li>`).join('');res.send(`<h2>Поръчки</h2><ul>${list}</ul>`);});
 
 app.listen(PORT,()=>console.log(`Server running on port ${PORT}`));
+// --- Storefront ---
+app.get('/', (req,res)=>{
+  const items = products.map(p=>`<div><b>${p.title}</b> — ${formatBGN(p.price)} ${formatEUR(p.price)}</div>`).join('');
+  res.send(`<h1>Магазин</h1>${items}<a href='/checkout'>Към поръчка</a>`);
+});
+
+// --- Checkout ---
+app.get('/checkout', (req,res)=>{
+  const methods = visiblePaymentMethods().map(m=>`<label><input type='radio' name='method' value='${m.key}' required/> ${m.label}</label>`).join('<br/>');
+  const productOptions = products.map(p=>`<div x-data='{qty:0}'><label>${p.title} — ${formatBGN(p.price)} ${formatEUR(p.price)}</label><input type='number' min='0' x-model='qty' @input='$dispatch("update-cart")' data-price='${p.price}' name='qty_${p.id}' /> бр.</div>`).join('');
+  res.send(`
+    <head>
+      <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+      <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body>
+    <h2>Поръчка</h2>
+    <form id='orderForm' method='post' action='/api/orders' x-data='{cart:[], total:0}' @update-cart.window="total=0; cart=[]; [...$el.querySelectorAll('input[type=number]')].forEach(i=>{const q=parseInt(i.value)||0;if(q>0) cart.push({id:i.name,qty:q,price:parseFloat(i.dataset.price)}); total+=q*parseFloat(i.dataset.price);}); $refs.itemsInput.value=JSON.stringify(cart); $refs.totalInput.value=total; $refs.totalSpan.textContent=total.toFixed(2)+' лв. ('+(total/${EUR_RATE}).toFixed(2)+' €)';">
+      <input name='name' placeholder='Име' required/><br/>
+      <input name='email' placeholder='Имейл' required/><br/>
+      <input name='phone' placeholder='Телефон' required/><br/>
+      <input name='city' placeholder='Град' required/><br/>
+      <input name='address' placeholder='Адрес' required/><br/>
+      <textarea name='note' placeholder='Бележка'></textarea><br/>
+      ${productOptions}<br/>
+      ${methods}<br/>
+      <p>Обща сума: <span x-ref='totalSpan'>0.00 лв. (0.00 €)</span></p>
+      <input type='hidden' name='items' x-ref='itemsInput' />
+      <input type='hidden' name='total' x-ref='totalInput' />
+      <button type='submit'>Поръчай</button>
+    </form>
+    </body>
+  `);
+});
+
+// --- Orders ---
+app.post('/api/orders', async(req,res)=>{
+  try{
+    const {name,email,phone,city,address,note,items,total,method}=req.body;
+    const order={id:uuidv4(),number:makeOrderNumber(),name,email,phone,shipping:{city,address,note},items:JSON.parse(items),total:Number(total),method,status:method==='cod'?'awaiting_shipment':'pending',createdAt:new Date().toISOString()};
+    orders.push(order);
+    await sendReceiptEmail(order);
+    if(method==='cod') res.redirect(`/waybill/${order.id}`); else res.send({ok:true,orderId:order.id});
+  }catch(e){console.error(e); res.status(500).send({error:'Invalid order data'});}
+});
+
+// --- Waybill ---
+app.get('/waybill/:orderId', requireAdmin, (req,res)=>{
+  const order=orders.find(o=>o.id===req.params.orderId);
+  if(!order) return res.status(404).send('Not found');
+  const itemsList = order.items.map(i=>`<li>${i.title} — ${i.qty} бр.</li>`).join('');
+  res.send(`<h2>Товарителница</h2><p>Поръчка: ${order.number}</p><p>Клиент: ${order.name}</p><p>Телефон: ${order.phone}</p><p>Адрес: ${order.shipping.city}, ${order.shipping.address}</p><p>Сума за събиране: ${formatBGN(order.total)} ${formatEUR(order.total)}</p><ul>${itemsList}</ul><textarea>${order.shipping.note||''}</textarea><br/><button onclick='window.print()'>Печат</button>`);
+});
+
+// --- Admin ---
+app.get('/admin/login',(req,res)=>{res.send(`<form method='post' action='/admin/login'><input name='email' placeholder='Имейл'/><br/><input name='password' type='password' placeholder='Парола'/><br/><button>Вход</button></form>`);});
+app.post('/admin/login',(req,res)=>{const{email,password}=req.body;if(email===ADMIN_EMAIL&&password===ADMIN_PASSWORD){req.session.admin=true;res.redirect('/admin');}else{res.send('Грешни данни');}});
+app.get('/admin',requireAdmin,(req,res)=>{const list=orders.map(o=>`<li>${o.number} — ${o.method} — ${o.status} — ${formatBGN(o.total)} ${formatEUR(o.total)} ${o.method==='cod'?`<a href='/waybill/${o.id}'>Товарителница</a>`:''}</li>`).join('');res.send(`<h2>Поръчки</h2><ul>${list}</ul>`);});
+
+app.listen(PORT,()=>console.log(`Server running on port ${PORT}`));
