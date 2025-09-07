@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Store</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<h1>MagnetsBG Store</h1>
+<div class="products">
+  <% products.forEach(p=>{ %>
+    <div class="product-box">
+      <h3><%= p.title %></h3>
+      <p>Price: <%= p.price.toFixed(2) %> BGN</p>
+      <a href="/checkout/<%= p.id %>">Buy</a>
+    </div>
+  <% }) %>
+</div>
+</body>
+</html>
