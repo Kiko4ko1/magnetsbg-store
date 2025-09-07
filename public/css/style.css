@@ -1,0 +1,3 @@
+body{font-family:sans-serif;padding:20px;}
+.products{display:flex;gap:20px;}
+.product-box{border:1px solid #333;padding:10px;width:150px;text-align:center;}
