@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Panel</title>
+</head>
+<body>
+<% if(login){ %>
+  <h1>Admin Login</h1>
+  <form method="post">
+    <input name="email" placeholder="Email"><br>
+    <input name="password" placeholder="Password" type="password"><br>
+    <button>Login</button>
+  </form>
+<% } else { %>
+  <h1>Orders</h1>
+  <% orders.forEach(o=>{ %>
+    <div>
+      <p><%= o.name %> ordered <%= o.qty %> x <%= o.product.title %> = <%= o.total.toFixed(2) %> BGN</p>
+    </div>
+  <% }) %>
+<% } %>
+</body>
+</html>
