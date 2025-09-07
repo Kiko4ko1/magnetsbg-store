@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Checkout</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<h1>Checkout: <%= product.title %></h1>
+<form method="post">
+  <label>Name</label><input name="name" required><br>
+  <label>Email</label><input name="email" required><br>
+  <label>Quantity</label><input type="number" name="qty" value="1" min="1"><br>
+  <button>Place Order</button>
+</form>
+</body>
+</html>
